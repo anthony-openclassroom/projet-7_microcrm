@@ -6,9 +6,9 @@
 
 ## 1. Contexte
 
-MicroCRM est une application de démonstration full-stack : un CRM simplifié permettant de gérer des individus et des organisations. Le dépôt est un monorepo GitHub avec un backend Spring Boot et un frontend Angular. À ce stade, l'application ne dispose d'aucun pipeline CI/CD, d'aucune analyse qualité automatisée, et son Dockerfile contient plusieurs erreurs bloquantes.
+MicroCRM est une application de démonstration full-stack : un CRM simplifié permettant de gérer des individus et des organisations. Le dépôt est un monorepo GitHub avec un backend Spring Boot et un frontend Angular.
 
-L'objectif de ce document est de formaliser les plans nécessaires à l'industrialisation, de corriger les problèmes identifiés, et de décrire le pipeline mis en place.
+Ce document décrit les plans d'industrialisation, les corrections apportées au projet initial (Dockerfile, pipeline, qualité), et l'état actuel de la configuration CI/CD.
 
 ---
 
@@ -67,23 +67,23 @@ cd back && ./gradlew test
 cd front && npm test -- --no-watch --browsers=ChromeHeadlessNoSandbox
 ```
 
-### 2.4 Problèmes identifiés
+### 2.4 Problèmes identifiés et corrigés
 
-**Erreurs dans le Dockerfile :**
+**Dockerfile — corrections apportées :**
 
-| Fichier | Ligne | Problème | Correction |
-|---|---|---|---|
-| `Dockerfile` | 1 | `FROM node` — image non épinglée, build non reproductible | `FROM node:20-alpine` |
-| `Dockerfile` | 10 | `FROM gradle:jdk17` — version non épinglée | `FROM gradle:8.7-jdk17` |
-| `Dockerfile` | 40 | `EXPOSE 4200` sur le stage `back` — Spring Boot écoute sur 8080 | `EXPOSE 8080` |
-| `Dockerfile` | 35 | `openjdk21-jre-headless` alors que le build cible Java 17 | `eclipse-temurin:17-jre-alpine` |
+| Ligne | Problème initial | Correction |
+|---|---|---|
+| 1 | `FROM node` — image non épinglée | `FROM node:20-alpine` |
+| 10 | `FROM gradle:jdk17` — version non épinglée | `FROM gradle:8.7-jdk17` |
+| 36 | `openjdk21-jre-headless` — mismatch avec le build Java 17 | `eclipse-temurin:17-jre-alpine` |
+| 40 | `EXPOSE 4200` sur le stage `back` — Spring Boot écoute sur 8080 | `EXPOSE 8080` |
+| — | Processus exécutés en `root` | User non-root `appuser` + `setcap` sur Caddy |
+| — | `COPY --from=front / /` fragile dans `standalone` | Install explicite des dépendances |
 
-**Autres points bloquants :**
+**Autres points :**
 
-- `front/src/app/config.ts:1` — `API_BASE_URL` hardcodée à `http://localhost:8080`. Dans un déploiement Docker où le front est servi par Caddy, le navigateur client cherche le backend sur `localhost:8080` — ça fonctionne si les deux ports sont exposés, mais ce n'est pas paramétrable.
-- `back/src/main/java/.../SpringDataRestCustomization.java:14` — CORS ouvert (`allowedOrigins("*")`). Acceptable en développement, risque en production.
-- Aucun workflow GitHub Actions — pas de CI/CD configuré.
-- Pas de `docker-compose.yml`.
+- `front/src/app/config.ts:1` — `API_BASE_URL` hardcodée à `http://localhost:8080`. Fonctionne si les deux ports sont exposés, mais non paramétrable. À externaliser via Angular environments.
+- `back/.../SpringDataRestCustomization.java:14` — CORS ouvert (`allowedOrigins("*")`). À restreindre en production.
 
 ### 2.5 Veille technologique
 
@@ -93,9 +93,7 @@ cd front && npm test -- --no-watch --browsers=ChromeHeadlessNoSandbox
 | Java | 17 LTS | 21 LTS | Fonctionnel, Java 21 préféré |
 | Gradle | 8.7 | 8.10+ | Mettre à jour |
 | Angular | 17.3 | 18+ | 17 en maintenance |
-| Node.js | non épinglé | 20 LTS | À épingler |
-
-Pour ce projet, les versions actuelles restent fonctionnelles. Les mises à jour sont à planifier en backlog.
+| Node.js | 20 LTS | 20 LTS | Épinglé ✓ |
 
 ---
 
@@ -113,7 +111,7 @@ flowchart LR
     end
 
     S["SonarCloud\nAnalyse qualité"]
-    D["Build & Push\nImages Docker"]
+    D["Build & Push\nImages Docker → GHCR"]
     R["GitHub Release\n(tags v* uniquement)"]
 
     trigger --> parallel
@@ -181,7 +179,7 @@ jobs:
   sonar:
     runs-on: ubuntu-latest
     needs: [backend, frontend]
-    continue-on-error: true  # ne bloque pas la CI si Sonar est indisponible
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
         with:
@@ -198,8 +196,6 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
           args: >
-            -Dsonar.projectKey=${{ vars.SONAR_PROJECT_KEY }}
-            -Dsonar.organization=${{ vars.SONAR_ORGANIZATION }}
             -Dsonar.sources=back/src/main,front/src
             -Dsonar.java.binaries=back/build/classes
             -Dsonar.coverage.jacoco.xmlReportPaths=back/build/reports/jacoco/test/jacocoTestReport.xml
@@ -209,17 +205,21 @@ jobs:
     runs-on: ubuntu-latest
     needs: [sonar]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - id: meta-back
         uses: docker/metadata-action@v5
         with:
-          images: ${{ secrets.DOCKERHUB_USERNAME }}/orion-microcrm-back
+          images: ghcr.io/${{ github.repository_owner }}/orion-microcrm-back
           tags: |
             type=raw,value=latest
             type=sha,prefix=
@@ -234,7 +234,7 @@ jobs:
       - id: meta-front
         uses: docker/metadata-action@v5
         with:
-          images: ${{ secrets.DOCKERHUB_USERNAME }}/orion-microcrm-front
+          images: ghcr.io/${{ github.repository_owner }}/orion-microcrm-front
           tags: |
             type=raw,value=latest
             type=sha,prefix=
@@ -271,18 +271,29 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-### 3.3 Secrets et variables GitHub
+### 3.3 Secrets requis
 
-| Type | Nom | Usage |
+| Secret | Usage | Configuration |
 |---|---|---|
-| Secret | `DOCKERHUB_TOKEN` | Push des images |
-| Secret | `SONAR_TOKEN` | Analyse SonarCloud |
-| Secret | `DOCKERHUB_USERNAME` | Compte Docker Hub |
-| Variable | `SONAR_PROJECT_KEY`, `SONAR_ORGANIZATION` | Projet SonarCloud |
+| `GITHUB_TOKEN` | Login GHCR + release GitHub | Automatique — fourni par GitHub Actions |
+| `SONAR_TOKEN` | Analyse SonarCloud | `Settings > Secrets > Actions` |
 
-### 3.4 Activer JaCoCo
+La configuration Sonar (clé projet, organisation) est dans `sonar-project.properties` — aucune variable GitHub requise.
 
-Ajouter dans `back/build.gradle` :
+### 3.4 Configuration Sonar et JaCoCo
+
+`sonar-project.properties` à la racine :
+
+```properties
+sonar.projectKey=microcrm
+sonar.organization=anthony-openclassroom
+sonar.sources=back/src/main,front/src
+sonar.tests=back/src/test
+sonar.java.binaries=back/build/classes
+sonar.exclusions=**/node_modules/**,**/dist/**,**/*.spec.ts
+```
+
+JaCoCo dans `back/build.gradle` :
 
 ```groovy
 plugins {
@@ -295,21 +306,17 @@ jacocoTestReport {
 }
 ```
 
-Et créer `sonar-project.properties` à la racine :
-
-```properties
-sonar.projectKey=microcrm
-sonar.sources=back/src/main,front/src
-sonar.tests=back/src/test
-sonar.java.binaries=back/build/classes
-sonar.exclusions=**/node_modules/**,**/dist/**,**/*.spec.ts
-```
-
 ---
 
 ## 4. Conteneurisation
 
-### 4.1 Dockerfile corrigé
+### 4.1 Dockerfile
+
+Build multi-étapes avec trois cibles. Points clés :
+
+- Images épinglées sur des versions précises (`node:20-alpine`, `gradle:8.7-jdk17`, `eclipse-temurin:17-jre-alpine`)
+- Stages `back` et `standalone` : exécution en user non-root (`appuser`) — `setcap cap_net_bind_service` sur Caddy pour binder 80/443 sans root
+- Stage `standalone` : install explicite des dépendances plutôt que `COPY --from=image / /`
 
 ```dockerfile
 FROM node:20-alpine AS front-build
@@ -325,24 +332,32 @@ COPY ./back .
 RUN ./gradlew build -x test
 
 FROM caddy:2-alpine AS front
-COPY --from=front-build /src/dist/microcrm/browser /srv
+COPY --from=front-build /src/dist/microcrm/browser /app/front
 COPY misc/docker/Caddyfile /etc/caddy/Caddyfile
 EXPOSE 80 443
 
 FROM eclipse-temurin:17-jre-alpine AS back
 WORKDIR /app
 COPY --from=back-build /src/build/libs/microcrm-0.0.1-SNAPSHOT.jar app.jar
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup \
+    && chown -R appuser:appgroup /app
+USER appuser
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "app.jar"]
 
 FROM alpine:3.19 AS standalone
-RUN apk add --no-cache supervisor caddy openjdk17-jre-headless
+WORKDIR /app
+RUN apk add --no-cache supervisor caddy openjdk17-jre-headless libcap
 COPY --from=front-build /src/dist/microcrm/browser /app/front
-COPY --from=back-build /src/build/libs/microcrm-0.0.1-SNAPSHOT.jar /app/back/app.jar
+COPY --from=back-build /src/build/libs/microcrm-0.0.1-SNAPSHOT.jar /app/back/microcrm-0.0.1-SNAPSHOT.jar
 COPY misc/docker/Caddyfile /app/Caddyfile
-COPY misc/docker/supervisor.ini /etc/supervisor.d/app.ini
+COPY misc/docker/supervisor.ini /app/supervisor.ini
+RUN setcap 'cap_net_bind_service=+ep' /usr/sbin/caddy
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup \
+    && chown -R appuser:appgroup /app
+USER appuser
 EXPOSE 80 443 8080
-CMD ["/usr/bin/supervisord", "-n"]
+CMD ["/usr/bin/supervisord", "-c", "/app/supervisor.ini"]
 ```
 
 ### 4.2 docker-compose.yml
@@ -409,7 +424,7 @@ Tous les tests front utilisent `HttpClientTestingModule` (mock HTTP) et `RouterT
 | Push vers `main` | Back + front + Sonar + CD | Validation avant déploiement |
 | Pull request vers `main` | Back + front + Sonar | Non-régression avant merge |
 
-**Limite :** les tests actuels sont des smoke tests (instanciation et démarrage de contexte). Ils détectent les erreurs de compilation et de câblage, pas les régressions fonctionnelles. Des tests REST via `MockMvc` et des tests de comportement Angular sont à ajouter pour atteindre une couverture métier significative.
+**Limite :** les tests actuels sont des smoke tests (instanciation et démarrage de contexte). Des tests REST via `MockMvc` et des tests de comportement Angular sont à ajouter pour atteindre une couverture métier significative.
 
 ---
 
@@ -419,15 +434,16 @@ Tous les tests front utilisent `HttpClientTestingModule` (mock HTTP) et `RouterT
 
 La criticité est calculée selon : **C = Fréquence (F) × Gravité (G)**
 
-| Risque | F | G | C | Niveau |
-|---|:---:|:---:|:---:|---|
-| CORS ouvert `allowedOrigins("*")` en prod | 3 | 3 | **9** | 🟠 Élevé |
-| Image `node` non épinglée — build non reproductible | 4 | 2 | **8** | 🟡 Modéré |
-| Mismatch JDK (build 17, runtime 21) | 3 | 2 | **6** | 🟡 Modéré |
-| Port 4200 exposé au lieu de 8080 sur le stage `back` | 4 | 2 | **8** | 🟡 Modéré |
-| `API_BASE_URL` hardcodée — non paramétrable | 3 | 2 | **6** | 🟡 Modéré |
-| Aucun test fonctionnel — régressions non détectées | 2 | 3 | **6** | 🟡 Modéré |
-| Absence de Quality Gate SonarCloud | 2 | 2 | **4** | 🟢 Faible |
+| Risque | F | G | C | Niveau | Statut |
+|---|:---:|:---:|:---:|---|---|
+| CORS ouvert `allowedOrigins("*")` en prod | 3 | 3 | **9** | 🟠 Élevé | En cours |
+| `API_BASE_URL` hardcodée — non paramétrable | 3 | 2 | **6** | 🟡 Modéré | En cours |
+| Aucun test fonctionnel — régressions non détectées | 2 | 3 | **6** | 🟡 Modéré | En cours |
+| Absence de Quality Gate SonarCloud | 2 | 2 | **4** | 🟢 Faible | En cours |
+| Image `node` non épinglée | 4 | 2 | **8** | 🟡 Modéré | ✅ Corrigé |
+| Mismatch JDK (build 17, runtime 21) | 3 | 2 | **6** | 🟡 Modéré | ✅ Corrigé |
+| Port 4200 exposé au lieu de 8080 | 4 | 2 | **8** | 🟡 Modéré | ✅ Corrigé |
+| Conteneurs exécutés en root | 3 | 3 | **9** | 🟠 Élevé | ✅ Corrigé |
 
 🟢 1–4 Faible | 🟡 5–8 Modéré | 🟠 9–12 Élevé | 🔴 13–16 Critique
 
@@ -435,21 +451,24 @@ La criticité est calculée selon : **C = Fréquence (F) × Gravité (G)**
 
 Analyse à chaque CI : bugs, vulnérabilités, security hotspots, code smells, couverture.
 
-Le job `sonar` est en `continue-on-error: true` pour ne pas bloquer la CI pendant la phase de configuration initiale. Une fois le Quality Gate défini, retirer cette option pour le rendre bloquant.
+Le job `sonar` est en `continue-on-error: true` pendant la phase de configuration initiale. Une fois le Quality Gate défini, retirer cette option pour le rendre bloquant.
 
 ### 6.3 Gestion des secrets
 
-Aucun secret en clair dans le code. Référence des clés à maintenir (sans valeurs) :
-- `DOCKERHUB_TOKEN`, `SONAR_TOKEN` → GitHub Secrets
-- Aucune credential dans les images Docker ni dans les fichiers committés
+| Secret | Stockage |
+|---|---|
+| `SONAR_TOKEN` | GitHub Secrets |
+| `GITHUB_TOKEN` | Automatique — aucune configuration requise |
+
+Aucune credential dans les images Docker ni dans les fichiers committés. La configuration Sonar (clé, organisation) est dans `sonar-project.properties`, pas dans des variables GitHub.
 
 ### 6.4 Plan d'action
 
-| Horizon | Actions |
-|---|---|
-| **Immédiat** | Corriger les 4 erreurs Dockerfile ; activer SonarCloud ; créer le workflow CI/CD |
-| **Court terme** | Restreindre CORS en production ; externaliser `API_BASE_URL` (Angular environments) |
-| **Long terme** | Durcir le Quality Gate ; ajouter des tests fonctionnels ; auditer les dépendances (`npm audit`, OWASP Dependency-Check) |
+| Horizon | Actions | Statut |
+|---|---|---|
+| **Immédiat** | Corriger Dockerfile, activer SonarCloud, créer CI/CD | ✅ Fait |
+| **Court terme** | Restreindre CORS en production ; externaliser `API_BASE_URL` | En cours |
+| **Long terme** | Durcir le Quality Gate ; ajouter tests fonctionnels ; `npm audit` + OWASP Dependency-Check | À planifier |
 
 ---
 
@@ -461,7 +480,7 @@ Aucun secret en clair dans le code. Référence des clés à maintenir (sans val
 |---|---|
 | `MAJEUR` | Rupture de l'API ou du comportement |
 | `MINEUR` | Nouvelle fonctionnalité rétrocompatible |
-| `PATCH` | Correction de bug |
+| `PATCH` | Correction de bug ou de sécurité |
 
 La release est déclenchée **manuellement** par création d'un tag :
 
@@ -469,9 +488,9 @@ La release est déclenchée **manuellement** par création d'un tag :
 git tag v1.0.0 && git push origin v1.0.0
 ```
 
-Le workflow `release` (dans `ci-cd.yml`) se déclenche alors automatiquement et publie le JAR et l'archive Angular sur GitHub Releases, ainsi que les images Docker taguées `v1.0.0` sur Docker Hub.
+Le workflow `release` publie le JAR et l'archive Angular sur GitHub Releases. Les images Docker sont taguées et publiées sur **GHCR** (`ghcr.io/anthony-openclassroom/orion-microcrm-back|front`).
 
-Pas de release automatique à chaque commit. Pas de branches par release — le modèle `main` + tags est suffisant pour ce projet.
+Pas de release automatique à chaque commit. Modèle `main` + tags — pas de branches par release.
 
 ---
 
@@ -484,7 +503,7 @@ Pas de release automatique à chaque commit. Pas de branches par release — le 
 | **MTTR** | Onglet Actions | Durée entre un run échoué et le run vert suivant |
 | **Change Failure Rate** | Onglet Actions | (Runs CD échoués / total) × 100 |
 
-Les valeurs seront renseignées après les premières semaines d'utilisation. L'onglet Actions de GitHub fournit l'historique et les durées nécessaires au calcul.
+Les valeurs seront renseignées après les premières semaines d'utilisation.
 
 ---
 
@@ -494,7 +513,7 @@ Les valeurs seront renseignées après les premières semaines d'utilisation. L'
 
 - Code → Git (GitHub)
 - Artefacts → GitHub Releases (JAR + archive front) à chaque tag `v*`
-- Images → Docker Hub (`latest` + `vX.Y.Z` + SHA)
+- Images → GHCR (`latest` + SHA + `vX.Y.Z`)
 - HSQLDB in-memory — pas de données persistantes à sauvegarder
 
 **Mises à jour à planifier :**
@@ -512,7 +531,7 @@ Les valeurs seront renseignées après les premières semaines d'utilisation. L'
 | Livrable | Emplacement |
 |---|---|
 | Workflow CI/CD | `.github/workflows/ci-cd.yml` |
-| Dockerfile corrigé | `Dockerfile` |
+| Dockerfile | `Dockerfile` |
 | Docker Compose | `docker-compose.yml` |
 | Configuration Sonar | `sonar-project.properties` |
 | Documentation | `rapport.md` |
