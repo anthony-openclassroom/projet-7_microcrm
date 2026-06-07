@@ -1,0 +1,23 @@
+services:
+  back:
+    build:
+      context: .
+      target: back
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/persons"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  front:
+    build:
+      context: .
+      target: front
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      back:
+        condition: service_healthy
