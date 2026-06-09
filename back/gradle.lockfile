@@ -26,6 +26,7 @@ jakarta.transaction:jakarta.transaction-api:2.0.1=compileClasspath,productionRun
 jakarta.xml.bind:jakarta.xml.bind-api:4.0.2=productionRuntimeClasspath,runtimeClasspath,testCompileClasspath,testRuntimeClasspath
 net.bytebuddy:byte-buddy-agent:1.14.13=testCompileClasspath,testRuntimeClasspath
 net.bytebuddy:byte-buddy:1.14.13=productionRuntimeClasspath,runtimeClasspath,testCompileClasspath,testRuntimeClasspath
+net.logstash.logback:logstash-logback-encoder:7.4=compileClasspath,productionRuntimeClasspath,runtimeClasspath,testCompileClasspath,testRuntimeClasspath
 net.minidev:accessors-smart:2.5.1=productionRuntimeClasspath,runtimeClasspath,testCompileClasspath,testRuntimeClasspath
 net.minidev:json-smart:2.5.1=productionRuntimeClasspath,runtimeClasspath,testCompileClasspath,testRuntimeClasspath
 org.antlr:antlr4-runtime:4.13.0=compileClasspath,productionRuntimeClasspath,runtimeClasspath,testCompileClasspath,testRuntimeClasspath
