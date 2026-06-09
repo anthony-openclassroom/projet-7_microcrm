@@ -59,7 +59,7 @@ Dependabot ouvre automatiquement des pull requests quand une action a une nouvel
 | `node` | `20-alpine` | Build front (stage uniquement) | ⚠️ Node 20 EOL avril 2026 — voir ci-dessous |
 | `gradle` | `8.7-jdk17` | Build back (stage uniquement) | Gradle 8.7 supporté |
 | `caddy` | `2-alpine` | Runtime front | Tag flottant sur branche 2.x stable |
-| `eclipse-temurin` | `17-jre-alpine` | Runtime back | Java 17 LTS supporté jusqu'à sept. 2029 |
+| `eclipse-temurin` | `17-jre-jammy` | Runtime back | Java 17 LTS supporté jusqu'à sept. 2029. Variante Jammy (Ubuntu 22.04) — multi-plateforme amd64 + arm64. La variante `-alpine` n'a pas de manifest ARM64. |
 | `alpine` | `3.21` | Stage standalone | Supporté jusqu'à nov. 2026 |
 
 ### Mise à jour identifiée

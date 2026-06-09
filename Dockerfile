@@ -28,7 +28,7 @@ EXPOSE 80 443
 # ────────────────────────────────────────────
 # Stage back : exécute le JAR Spring Boot
 # ────────────────────────────────────────────
-FROM eclipse-temurin:17-jre-alpine AS back
+FROM eclipse-temurin:17-jre-jammy AS back
 
 WORKDIR /app
 
