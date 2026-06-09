@@ -130,6 +130,18 @@ Pour créer une release :
 git tag v1.0.0 && git push origin v1.0.0
 ```
 
-La documentation technique complète (plans de testing, sécurité, conteneurisation, versioning) est dans [`rapport.md`](rapport.md).
-La documentation de déploiement (fonctionnement du CD, commandes, secrets) est dans [`docs/deploy.md`](docs/deploy.md).
-La veille technologique (versions des actions GitHub, images Docker, stack) est dans [`docs/veilleinfo.md`](docs/veilleinfo.md).
+La documentation technique complète est dans [`rapport.md`](rapport.md).
+
+### Documentation détaillée
+
+| Document | Contenu |
+|---|---|
+| [`docs/deploy.md`](docs/deploy.md) | Pipeline CD — commandes, secrets, démarrage rapide opérateur |
+| [`docs/plan-tests.md`](docs/plan-tests.md) | Plan de tests — inventaire, couverture 91.5 %, notes techniques |
+| [`docs/plan-securite.md`](docs/plan-securite.md) | Plan de sécurité — vulnérabilités OWASP, risques, actions P0→P3 |
+| [`docs/monitoring-elk.md`](docs/monitoring-elk.md) | Stack ELK — architecture, démarrage, indicateurs Kibana |
+| [`docs/plan-sauvegarde.md`](docs/plan-sauvegarde.md) | Plan de sauvegarde — ce qui est sauvegardé, procédures de restauration |
+| [`docs/plan-mise-a-jour.md`](docs/plan-mise-a-jour.md) | Plan de mise à jour — Gradle, npm, Angular, Docker, Dependabot |
+| [`docs/metriques-dora-kpi.md`](docs/metriques-dora-kpi.md) | Métriques DORA et KPI pipeline — Lead Time ~7 min Elite |
+| [`docs/synthese-amelioration-continue.md`](docs/synthese-amelioration-continue.md) | Synthèse globale — roadmap 10 actions, quick wins, bilan |
+| [`docs/veilleinfo.md`](docs/veilleinfo.md) | Veille technologique — versions, état du support, EOL |

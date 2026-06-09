@@ -4,6 +4,30 @@ Ce document décrit précisément le fonctionnement du pipeline CD, chaque comma
 
 ---
 
+## Démarrage rapide (opérateur)
+
+```bash
+# Déployer depuis les images GHCR (production)
+docker compose pull && docker compose up -d
+
+# Déployer avec rebuild local (développement)
+docker compose up --build -d
+
+# Déployer avec monitoring ELK
+docker compose -f docker-compose.yml -f docker-compose.elk.yml up -d
+
+# Vérifier que tout est opérationnel
+curl http://localhost:8080/persons   # → 200 OK (API Spring Boot)
+curl http://localhost/               # → 200 OK (SPA Angular via Caddy)
+
+# Arrêter
+docker compose down
+```
+
+**Ordre de démarrage :** le back-end démarre en premier. Le front-end attend que le healthcheck `GET /persons` soit vert (`condition: service_healthy`).
+
+---
+
 ## Vue d'ensemble
 
 Le déploiement est entièrement automatisé via GitHub Actions. Il se décompose en deux étapes distinctes, déclenchées par des événements Git différents :
