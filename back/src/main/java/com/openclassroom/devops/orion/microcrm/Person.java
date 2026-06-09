@@ -105,6 +105,7 @@ public class Person {
 
   @PreRemove
   private void remoteFromOrganization() {
+    if (organizations == null) return;
     for (Organization org : organizations) {
       org.removePerson(this);
     }
