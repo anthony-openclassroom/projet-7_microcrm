@@ -49,8 +49,7 @@ jobs:
       - run: npm ci
       - run: npm test -- --no-watch --browsers=ChromeHeadlessNoSandbox
       - run: npm run build
-      - run: npm audit --audit-level=high
-        continue-on-error: true
+      - run: npm audit --audit-level=critical
       - uses: actions/upload-artifact@v7
         with:
           name: frontend-dist
