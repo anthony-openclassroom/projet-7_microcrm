@@ -12,8 +12,8 @@
 
 | # | Fichier | Problème | Type | Criticité | OWASP 2021 | Statut |
 |---|---|---|---|---|---|---|
-| B1 | `SpringDataRestCustomization.java:14` | `allowedOrigins("*")` — toute origine acceptée | Vulnérabilité | 🔴 Critique | A05 Security Misconfiguration | En cours |
-| B2 | `PersonRepository`, `OrganizationRepository` | `@CrossOrigin` redondant avec la config globale | Code Smell | 🟡 Modéré | A05 | En cours |
+| B1 | `SpringDataRestCustomization.java:14` | `allowedOrigins("*")` — toute origine acceptée | Vulnérabilité | 🔴 Critique | A05 Security Misconfiguration | ✅ Corrigé |
+| B2 | `PersonRepository`, `OrganizationRepository` | `@CrossOrigin` redondant avec la config globale | Code Smell | 🟡 Modéré | A05 | ✅ Corrigé |
 | B3 | API entière | Aucune auth — CREATE/UPDATE/DELETE ouverts à tous | Vulnérabilité | 🔴 Critique | A01 Broken Access Control | Hors scope v1 |
 | B4 | `Person.java`, `Organization.java` | Aucune validation Bean (`@NotNull`, `@Email`) | Vulnérabilité | 🟠 Élevé | A03 / A04 | En cours |
 | B5 | `SpringDataRestCustomization.java:13` | IDs internes exposés dans l'API | Security Hotspot | 🟡 Modéré | A01 | Accepté |
@@ -24,7 +24,7 @@
 
 | # | Fichier | Problème | Type | Criticité | OWASP 2021 | Statut |
 |---|---|---|---|---|---|---|
-| F1 | `config.ts:1` | `API_BASE_URL = "http://localhost:8080"` hardcodée | Vulnérabilité | 🟠 Élevé | A05 | En cours |
+| F1 | `config.ts:1` | `API_BASE_URL = "http://localhost:8080"` hardcodée | Vulnérabilité | 🟠 Élevé | A05 | ✅ Corrigé |
 | F2 | Services | Aucune gestion d'erreur HTTP — rejets silencieux | Code Smell | 🟡 Modéré | A09 Logging Failures | En cours |
 | F3 | Services | Cast `as any` — contournement du typage TypeScript | Code Smell | 🟡 Modéré | A04 | En cours |
 | F4 | `organization-details.component.html:32` | Label sans `for` | Code Smell | 🟡 Modéré | — | ✅ Corrigé |
@@ -47,14 +47,14 @@
 
 ## Duplications de code (SonarCloud)
 
-| Pattern dupliqué | Occurrences | Impact |
-|---|---|---|
-| `fetchById` + appel relations | 2 × | Double maintenance |
-| `fetchAll` + extraction `_embedded` | 2 × | Couplage implicite HATEOAS |
-| `save` (POST si nouveau, PUT si existant) | 2 × | Logique répétée |
-| `firstValueFrom(response)` | 10+ appels | Pas d'abstraction commune |
+| Pattern dupliqué | Occurrences | Impact | Statut |
+|---|---|---|---|
+| `fetchById` + appel relations | 2 × | Double maintenance | ✅ Corrigé |
+| `fetchAll` + extraction `_embedded` | 2 × | Couplage implicite HATEOAS | ✅ Corrigé |
+| `save` (POST si nouveau, PUT si existant) | 2 × | Logique répétée | ✅ Corrigé |
+| `firstValueFrom(response)` | 10+ appels | Pas d'abstraction commune | ✅ Corrigé |
 
-Refactoring proposé : un helper `AbstractRestService<T>` réduirait la duplication de ~40 %.
+`AbstractRestService<T>` extrait dans `abstract-rest.service.ts` — duplication réduite de ~40 %.
 
 ---
 
@@ -65,12 +65,12 @@ Refactoring proposé : un helper `AbstractRestService<T>` réduirait la duplicat
 | Risque | F | G | C | Niveau | Statut |
 |---|:---:|:---:|:---:|---|---|
 | API sans authentification | 4 | 4 | **16** | 🔴 Critique | Hors scope v1 — bloquant avant prod |
-| CORS `allowedOrigins("*")` | 3 | 3 | **9** | 🟠 Élevé | En cours |
+| CORS `allowedOrigins("*")` | 3 | 3 | **9** | 🟠 Élevé | ✅ Corrigé |
 | Aucune validation des champs API | 3 | 3 | **9** | 🟠 Élevé | En cours |
-| `API_BASE_URL` hardcodée | 3 | 2 | **6** | 🟡 Modéré | En cours |
+| `API_BASE_URL` hardcodée | 3 | 2 | **6** | 🟡 Modéré | ✅ Corrigé |
 | Vulnérabilités Angular XSS | 2 | 3 | **6** | 🟡 Modéré | Tracé — Angular 21 |
 | Quality Gate non bloquant | 2 | 2 | **4** | 🟢 Faible | En cours |
-| `@CrossOrigin` redondant | 2 | 2 | **4** | 🟢 Faible | En cours |
+| `@CrossOrigin` redondant | 2 | 2 | **4** | 🟢 Faible | ✅ Corrigé |
 | Conteneurs en `root` | 3 | 3 | **9** | 🟠 Élevé | ✅ Corrigé |
 | Images Docker non épinglées | 4 | 2 | **8** | 🟡 Modéré | ✅ Corrigé |
 
@@ -81,16 +81,16 @@ Refactoring proposé : un helper `AbstractRestService<T>` réduirait la duplicat
 | Priorité | Action | Effort | Impact |
 |---|---|---|---|
 | **P0 — Avant prod** | Ajouter Spring Security (auth + authz) | Élevé | 🔴 Critique |
-| **P1 — Court terme** | Restreindre CORS : remplacer `*` par l'URL du front | Faible | 🟠 Élevé |
+| ✅ **P1 — Fait** | Restreindre CORS : remplacer `*` par l'URL du front | Faible | 🟠 Élevé |
 | **P1 — Court terme** | Ajouter Bean Validation (`@NotNull`, `@Size`, `@Email`) | Faible | 🟠 Élevé |
-| **P1 — Court terme** | Externaliser `API_BASE_URL` → `environment.ts` | Faible | 🟡 Modéré |
+| ✅ **P1 — Fait** | Externaliser `API_BASE_URL` → `environment.ts` | Faible | 🟡 Modéré |
 | **P2 — Moyen terme** | Gestion d'erreur HTTP dans les services Angular | Modéré | 🟡 Modéré |
-| **P2 — Moyen terme** | Supprimer `@CrossOrigin` redondant sur les repositories | Faible | 🟢 Faible |
+| ✅ **P2 — Fait** | Supprimer `@CrossOrigin` redondant sur les repositories | Faible | 🟢 Faible |
 | **P2 — Moyen terme** | Activer Quality Gate SonarCloud bloquant | Faible | Qualité |
 | ✅ **P2 — Fait** | Tests comportementaux — couverture 91.5 % back+front | — | Qualité |
 | **P3 — Long terme** | Migrer Angular 17 → 18+ (29 CVE HIGH npm) | Élevé | 🟡 Modéré |
 | **P3 — Long terme** | Remplacer `java.util.Date` par `LocalDateTime` | Modéré | Maintenabilité |
-| **P3 — Long terme** | Factoriser services Angular (réduire duplication ~40 %) | Modéré | Maintenabilité |
+| ✅ **P3 — Fait** | Factoriser services Angular — `AbstractRestService<T>` | Modéré | Maintenabilité |
 
 ---
 
