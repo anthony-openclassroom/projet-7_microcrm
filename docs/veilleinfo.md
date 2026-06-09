@@ -10,6 +10,7 @@ Ce document recense les versions utilisées dans le projet, les mises à jour id
 
 | Action | Version utilisée | Vérifiée le | Source |
 |---|---|---|---|
+| `actions/cache` | `@v5` | 2026-06-09 | [github.com/actions/cache](https://github.com/actions/cache) — utilisé en interne par `setup-java` et `setup-node`, non appelé directement |
 | `actions/checkout` | `@v6` | 2026-06-09 | [github.com/actions/checkout](https://github.com/actions/checkout) |
 | `actions/setup-java` | `@v5` | 2026-06-09 | [github.com/actions/setup-java](https://github.com/actions/setup-java) |
 | `actions/setup-node` | `@v6` | 2026-06-09 | [github.com/actions/setup-node](https://github.com/actions/setup-node) |
@@ -26,6 +27,7 @@ Ce document recense les versions utilisées dans le projet, les mises à jour id
 
 | Action | Ancienne version | Nouvelle version | Date découverte | Appliquée |
 |---|---|---|---|---|
+| `actions/cache` | — | `@v5` | 2026-06-09 | N/A — dépendance indirecte |
 | `actions/checkout` | `@v4` | `@v6` | 2026-06-09 | ✅ |
 | `actions/setup-java` | `@v4` | `@v5` | 2026-06-09 | ✅ |
 | `actions/setup-node` | `@v4` | `@v6` | 2026-06-09 | ✅ |
