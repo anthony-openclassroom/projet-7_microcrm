@@ -427,47 +427,166 @@ Tous les tests front utilisent `HttpClientTestingModule` (mock HTTP) et `RouterT
 
 ---
 
-## 6. Plan de sécurité
+## 6. Plan de sécurité finalisé
 
-### 6.1 Analyse des risques
+**Date de finalisation :** 09 juin 2026 | **Sources :** SonarCloud, analyse statique du code, npm audit, OWASP Top 10 2021
 
-La criticité est calculée selon : **C = Fréquence (F) × Gravité (G)**
+---
 
-| Risque                                             |  F  |  G  |   C   | Niveau    | Statut     |
-| -------------------------------------------------- | :-: | :-: | :---: | --------- | ---------- |
-| CORS ouvert `allowedOrigins("*")` en prod          |  3  |  3  | **9** | 🟠 Élevé  | En cours   |
-| `API_BASE_URL` hardcodée — non paramétrable        |  3  |  2  | **6** | 🟡 Modéré | En cours   |
-| Aucun test fonctionnel — régressions non détectées |  2  |  3  | **6** | 🟡 Modéré | En cours   |
-| Absence de Quality Gate SonarCloud                 |  2  |  2  | **4** | 🟢 Faible | En cours   |
-| Image `node` non épinglée                          |  4  |  2  | **8** | 🟡 Modéré | ✅ Corrigé |
-| Mismatch JDK (build 17, runtime 21)                |  3  |  2  | **6** | 🟡 Modéré | ✅ Corrigé |
-| Port 4200 exposé au lieu de 8080                   |  4  |  2  | **8** | 🟡 Modéré | ✅ Corrigé |
-| Conteneurs exécutés en root                        |  3  |  3  | **9** | 🟠 Élevé  | ✅ Corrigé |
+### 6.1 Périmètre analysé
 
-🟢 1–4 Faible | 🟡 5–8 Modéré | 🟠 9–12 Élevé | 🔴 13–16 Critique
+| Couche | Fichiers analysés | Lignes de code |
+|---|---|---|
+| Back-end Java | 7 fichiers `.java` | 299 lignes |
+| Front-end TypeScript | 9 fichiers `.ts` (hors specs) | 381 lignes |
+| Infrastructure | Dockerfile, docker-compose, Caddyfile | — |
 
-### 6.2 SonarQube Cloud
+---
 
-Analyse à chaque CI : bugs, vulnérabilités, security hotspots, code smells, couverture.
+### 6.2 Inventaire des vulnérabilités et anomalies (SonarCloud + analyse statique)
 
-Le job `sonar` est en `continue-on-error: true` pendant la phase de configuration initiale. Une fois le Quality Gate défini, retirer cette option pour le rendre bloquant.
+> **Distinction importante :** une **vulnérabilité** peut être exploitée pour compromettre l'application. Un **code smell** dégrade la maintenabilité sans impact sécurité direct. Les deux sont tracés ici avec leur catégorie OWASP.
 
-### 6.3 Gestion des secrets
+#### Back-end
 
-| Secret         | Stockage                                   |
-| -------------- | ------------------------------------------ |
-| `SONAR_TOKEN`  | GitHub Secrets                             |
-| `GITHUB_TOKEN` | Automatique — aucune configuration requise |
+| # | Fichier | Problème | Type | Criticité | OWASP 2021 | Statut |
+|---|---|---|---|---|---|---|
+| B1 | `SpringDataRestCustomization.java:14` | `allowedOrigins("*")` — toute origine acceptée | Vulnérabilité | 🔴 Critique | A05 — Security Misconfiguration | En cours |
+| B2 | `PersonRepository.java`, `OrganizationRepository.java` | `@CrossOrigin` redondant avec la config globale CORS | Code Smell | 🟡 Modéré | A05 | En cours |
+| B3 | API entière | Aucune authentification ni autorisation — CREATE/UPDATE/DELETE ouverts à tous | Vulnérabilité | 🔴 Critique | A01 — Broken Access Control | Hors scope v1 |
+| B4 | `Person.java`, `Organization.java` | Aucune validation des champs (`@NotNull`, `@Size`, `@Email`) | Vulnérabilité | 🟠 Élevé | A03 — Injection / A04 — Insecure Design | En cours |
+| B5 | `SpringDataRestCustomization.java:13` | `config.exposeIdsFor()` — IDs internes exposés dans l'API | Security Hotspot | 🟡 Modéré | A01 | Accepté |
+| B6 | `Person.java:3` | Utilisation de `java.util.Date` (déprécié depuis Java 8) | Code Smell | 🟢 Faible | — | À planifier |
+| B7 | Tests | 2 classes de test, couverture ~16 % — smoke tests uniquement | Qualité | 🟠 Élevé | A04 — Insecure Design | En cours |
 
-Aucune credential dans les images Docker ni dans les fichiers committés. La configuration Sonar (clé, organisation) est dans `sonar-project.properties`, pas dans des variables GitHub.
+#### Front-end
 
-### 6.4 Plan d'action
+| # | Fichier | Problème | Type | Criticité | OWASP 2021 | Statut |
+|---|---|---|---|---|---|---|
+| F1 | `config.ts:1` | `API_BASE_URL = "http://localhost:8080"` — URL hardcodée | Vulnérabilité | 🟠 Élevé | A05 — Security Misconfiguration | En cours |
+| F2 | `person.service.ts`, `organization.service.ts` | Aucune gestion d'erreur HTTP — Promise rejets silencieux | Code Smell | 🟡 Modéré | A09 — Logging Failures | En cours |
+| F3 | Services (multiple) | Cast `as any` — contournement du typage TypeScript | Code Smell | 🟡 Modéré | A04 | En cours |
+| F4 | `organization-details.component.html:32` | Label sans `for` — inaccessibilité | Code Smell | 🟡 Modéré | — | ✅ Corrigé |
+| F5 | `organization-details.component.ts:36` | `parseInt` global au lieu de `Number.parseInt` | Code Smell | 🟢 Faible | — | ✅ Corrigé |
+| F6 | `person-details.component.ts:33` | Opération async dans le constructeur | Code Smell | 🟠 Élevé (Reliability) | A04 | ✅ Corrigé |
+| F7 | `person-details.component.ts:43` | `parseInt` global au lieu de `Number.parseInt` | Code Smell | 🟢 Faible | — | ✅ Corrigé |
+| F8 | `@angular/core ≤18.2.14` | XSS via attributs i18n, SVG — 29 vulnérabilités HIGH npm | Vulnérabilité | 🟠 Élevé | A03 — XSS | Tracé — Angular 21 requis |
 
-| Horizon         | Actions                                                                                    | Statut      |
-| --------------- | ------------------------------------------------------------------------------------------ | ----------- |
-| **Immédiat**    | Corriger Dockerfile, activer SonarCloud, créer CI/CD                                       | ✅ Fait     |
-| **Court terme** | Restreindre CORS en production ; externaliser `API_BASE_URL`                               | En cours    |
-| **Long terme**  | Durcir le Quality Gate ; ajouter tests fonctionnels ; `npm audit` + OWASP Dependency-Check | À planifier |
+#### Infrastructure
+
+| # | Élément | Problème | Type | Criticité | Statut |
+|---|---|---|---|---|---|
+| I1 | Dockerfile (tous stages) | Conteneurs exécutés en `root` | Vulnérabilité | 🔴 Critique | ✅ Corrigé |
+| I2 | Images Docker | Versions non épinglées (`FROM node`) | Vulnérabilité | 🟠 Élevé | ✅ Corrigé |
+| I3 | `eclipse-temurin:17-jre-alpine` | Incompatibilité ARM64 | Bug | 🟠 Élevé | ✅ Corrigé |
+| I4 | `alpine:3.19` | Version EOL (novembre 2025) | Vulnérabilité | 🟠 Élevé | ✅ Corrigé |
+| I5 | `docker-compose.elk.yml` | `xpack.security.enabled=false` — usage local uniquement | Config | 🔴 Critique (si exposé) | Documenté |
+
+---
+
+### 6.3 Duplications de code identifiées
+
+SonarCloud signale une duplication structurelle significative entre `person.service.ts` et `organization.service.ts` :
+
+| Pattern dupliqué | Occurrence | Impact |
+|---|---|---|
+| Structure `fetchById` + appel relations | 2 × | Toute modification doit être faite en double |
+| Structure `fetchAll` + extraction `_embedded` | 2 × | Couplage implicite à la structure HATEOAS |
+| Structure `save` (POST si nouveau, PUT si existant) | 2 × | Logique métier répétée |
+| Gestion `firstValueFrom(response)` | 10+ appels | Absence d'abstraction commune |
+
+**Refactoring proposé :** une classe `AbstractRestService<T>` ou un helper `http.get<T>()` commun réduirait la duplication de ~40 %.
+
+---
+
+### 6.4 Zones à forte complexité
+
+| Fichier | Méthode | Complexité | Raison |
+|---|---|---|---|
+| `person-details.component.ts` | Composant global | Élevée | Gère la logique CRUD + organisations liées + refresh |
+| `person.service.ts` | `save()` | Modérée | Branchement POST/PUT + re-fetch des organisations |
+| `organization.service.ts` | `save()` | Modérée | Même pattern que `person.service.ts` |
+| `SpringDataRestCustomization.java` | `configureRepositoryRestConfiguration` | Faible | Simple mais concentre la config CORS critique |
+
+---
+
+### 6.5 Couverture de tests
+
+| Couche | Tests existants | Ce qui est couvert | Ce qui manque |
+|---|---|---|---|
+| Back — Unitaire | `MicroCRMApplicationTests` (`@SpringBootTest`) | Démarrage du contexte Spring | Logique métier, validation, endpoints |
+| Back — Intégration | `PersonRepositoryIntegrationTest` (`@DataJpaTest`) | `findByEmail` sur HSQLDB | Tous les autres endpoints REST, codes HTTP, pagination |
+| Front — Unitaire | 6 fichiers `.spec.ts` | Instanciation des composants/services | Comportement UI, appels HTTP, gestion d'erreur |
+
+**Couverture estimée :**
+- Back : ~16 % (47 lignes de tests / 299 lignes de production)
+- Front : ~5 % (instanciation uniquement, aucun test de comportement)
+
+**Cible recommandée :** 60 % back, 40 % front (tests comportementaux avec `MockMvc` et `ComponentFixture`).
+
+---
+
+### 6.6 Règles critiques violées (SonarSource)
+
+| Règle SonarSource | Langage | Sévérité | Occurrence dans le projet |
+|---|---|---|---|
+| `java:S2092` — Cookie sans flag Secure | Java | Critical | Non applicable (pas de session), mais à surveiller si auth ajoutée |
+| `java:S5122` — CORS trop permissif | Java | Critical | `allowedOrigins("*")` dans `SpringDataRestCustomization` |
+| `typescript:S2486` — Promise rejetée non gérée | TypeScript | Major | Tous les appels HTTP dans les services |
+| `typescript:S4325` — Cast `as any` inutile | TypeScript | Minor | Services Angular |
+| `Web:S1128` — Label sans contrôle associé | HTML | Major | ✅ Corrigé (`organization-details.component.html`) |
+
+---
+
+### 6.7 Gestion des secrets
+
+| Secret | Stockage | Visibilité |
+|---|---|---|
+| `SONAR_TOKEN` | GitHub Secrets (Settings → Secrets → Actions) | Masqué dans les logs CI |
+| `GITHUB_TOKEN` | Automatique — injecté par GitHub Actions | Masqué dans les logs CI |
+
+Aucune credential dans les images Docker, les fichiers committés, ou `application.properties`. La configuration Sonar (`sonar-project.properties`) ne contient que des valeurs publiques (clé de projet, organisation).
+
+---
+
+### 6.8 Analyse des risques — tableau de synthèse
+
+**C = Fréquence (F) × Gravité (G)** | 🟢 1–4 Faible | 🟡 5–8 Modéré | 🟠 9–12 Élevé | 🔴 13–16 Critique
+
+| Risque | F | G | C | Niveau | Statut |
+|---|:---:|:---:|:---:|---|---|
+| API sans authentification — opérations destructives ouvertes | 4 | 4 | **16** | 🔴 Critique | Hors scope v1 — à adresser avant mise en prod |
+| CORS `allowedOrigins("*")` | 3 | 3 | **9** | 🟠 Élevé | En cours |
+| Aucune validation des champs API (injection, longueur) | 3 | 3 | **9** | 🟠 Élevé | En cours |
+| `API_BASE_URL` hardcodée | 3 | 2 | **6** | 🟡 Modéré | En cours |
+| Vulnérabilités Angular XSS (HIGH, npm audit) | 2 | 3 | **6** | 🟡 Modéré | Tracé — Angular 21 |
+| Couverture de tests insuffisante | 2 | 3 | **6** | 🟡 Modéré | En cours |
+| `@CrossOrigin` redondant sur les repositories | 2 | 2 | **4** | 🟢 Faible | En cours |
+| `java.util.Date` déprécié | 1 | 1 | **1** | 🟢 Faible | À planifier |
+| Conteneurs en `root` | 3 | 3 | **9** | 🟠 Élevé | ✅ Corrigé |
+| Images Docker non épinglées | 4 | 2 | **8** | 🟡 Modéré | ✅ Corrigé |
+| Alpine EOL (`3.19`) | 3 | 2 | **6** | 🟡 Modéré | ✅ Corrigé |
+| Mismatch JDK (build 17 / runtime 21) | 3 | 2 | **6** | 🟡 Modéré | ✅ Corrigé |
+| Async dans constructeur Angular | 2 | 2 | **4** | 🟢 Faible | ✅ Corrigé |
+| Label sans `for` (accessibilité) | 3 | 1 | **3** | 🟢 Faible | ✅ Corrigé |
+
+---
+
+### 6.9 Plan d'action priorisé
+
+| Priorité | Action | Effort | Impact sécurité |
+|---|---|---|---|
+| **P0 — Avant mise en prod** | Ajouter Spring Security (authentification + autorisation) | Élevé | 🔴 Critique |
+| **P1 — Court terme** | Restreindre CORS : remplacer `*` par l'URL du front | Faible | 🟠 Élevé |
+| **P1 — Court terme** | Ajouter validation Bean (`@NotNull`, `@Size`, `@Email`) sur `Person` et `Organization` | Faible | 🟠 Élevé |
+| **P1 — Court terme** | Externaliser `API_BASE_URL` via Angular `environment.ts` | Faible | 🟡 Modéré |
+| **P2 — Moyen terme** | Ajouter gestion d'erreur dans les services Angular (`catch`) | Modéré | 🟡 Modéré |
+| **P2 — Moyen terme** | Supprimer `@CrossOrigin` redondant sur les repositories | Faible | 🟢 Faible |
+| **P2 — Moyen terme** | Écrire tests `MockMvc` pour les endpoints REST back | Modéré | Qualité |
+| **P2 — Moyen terme** | Activer Quality Gate SonarCloud bloquant | Faible | Qualité |
+| **P3 — Long terme** | Migrer Angular 17 → 18+ (corrige 29 vulnérabilités HIGH npm) | Élevé | 🟡 Modéré |
+| **P3 — Long terme** | Remplacer `java.util.Date` par `LocalDateTime` | Modéré | Maintenabilité |
+| **P3 — Long terme** | Factoriser `PersonService` / `OrganizationService` (réduire duplication ~40 %) | Modéré | Maintenabilité |
 
 ---
 
