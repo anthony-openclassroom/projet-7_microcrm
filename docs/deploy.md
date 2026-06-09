@@ -79,10 +79,10 @@ ghcr.io/anthony-openclassroom/orion-microcrm-front
 
 ### Détail de chaque commande
 
-#### 1. `docker/setup-buildx-action@v3`
+#### 1. `docker/setup-buildx-action@v4`
 
 ```yaml
-- uses: docker/setup-buildx-action@v3
+- uses: docker/setup-buildx-action@v4
 ```
 
 | | |
@@ -93,10 +93,10 @@ ghcr.io/anthony-openclassroom/orion-microcrm-front
 
 ---
 
-#### 2. `docker/login-action@v3`
+#### 2. `docker/login-action@v4`
 
 ```yaml
-- uses: docker/login-action@v3
+- uses: docker/login-action@v4
   with:
     registry: ghcr.io
     username: ${{ github.actor }}
@@ -112,11 +112,11 @@ ghcr.io/anthony-openclassroom/orion-microcrm-front
 
 ---
 
-#### 3. `docker/metadata-action@v5`
+#### 3. `docker/metadata-action@v6`
 
 ```yaml
 - id: meta-back
-  uses: docker/metadata-action@v5
+  uses: docker/metadata-action@v6
   with:
     images: ghcr.io/${{ github.repository_owner }}/orion-microcrm-back
     tags: |
@@ -141,10 +141,10 @@ Cette action est exécutée deux fois : une fois pour l'image `back`, une fois p
 
 ---
 
-#### 4. `docker/build-push-action@v6`
+#### 4. `docker/build-push-action@v7`
 
 ```yaml
-- uses: docker/build-push-action@v6
+- uses: docker/build-push-action@v7
   with:
     context: .
     target: back
