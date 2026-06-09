@@ -33,7 +33,7 @@ export class OrganizationDetailsComponent implements OnInit {
     if (orgIdParam === 'new') {
       this.isNew = true
     } else if (typeof orgIdParam === 'string') {
-      const orgId = parseInt(orgIdParam)
+      const orgId = Number.parseInt(orgIdParam)
       this.organizationService.fetchById(orgId).then(org => {
         this.org = org
         this.isNew = false

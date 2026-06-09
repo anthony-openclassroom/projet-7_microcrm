@@ -30,17 +30,18 @@ export class PersonDetailsComponent implements OnInit {
   isNew: boolean = false;
 
   constructor(private route: ActivatedRoute, private personService: PersonService, private organizationService: OrganizationService, private router: Router) {
-    this.organizationService.fetchAll().then(orgs => this.organizations = orgs)
   }
 
   ngOnInit(): void {
+    this.organizationService.fetchAll().then(orgs => this.organizations = orgs)
+
     const routeParams = this.route.snapshot.paramMap;
     const personIdParam = routeParams.get('personId');
 
     if (personIdParam === 'new') {
       this.isNew = true
     } else if (typeof personIdParam === 'string') {
-      const personId = parseInt(personIdParam)
+      const personId = Number.parseInt(personIdParam)
       this.personService.fetchById(personId).then(p => {
         this.person = p
         this.isNew = false
