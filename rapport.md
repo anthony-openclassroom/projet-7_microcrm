@@ -394,36 +394,47 @@ docker-compose up --build
 
 ## 5. Plan de testing
 
-### 5.1 Tests existants
+### 5.1 Tests existants et ajoutés
 
-**Backend :**
+**Backend (26 tests — mis à jour le 09 juin 2026) :**
 
-| Classe                            | Annotation        | Ce qui est testé                       |
-| --------------------------------- | ----------------- | -------------------------------------- |
-| `MicroCRMApplicationTests`        | `@SpringBootTest` | Le contexte Spring démarre sans erreur |
-| `PersonRepositoryIntegrationTest` | `@DataJpaTest`    | `findByEmail` via HSQLDB in-memory     |
+| Classe | Annotation | Ce qui est testé |
+|---|---|---|
+| `MicroCRMApplicationTests` | `@SpringBootTest` | Démarrage du contexte Spring |
+| `PersonRepositoryIntegrationTest` | `@DataJpaTest` | `findByEmail` via HSQLDB |
+| `PersonTest` | Unitaire (JUnit 5) | Constructeur, getters/setters |
+| `OrganizationTest` | Unitaire (JUnit 5) | `addPerson`, `removePerson`, cas liste nulle |
+| `PersonRestIntegrationTest` | `@SpringBootTest + @AutoConfigureMockMvc` | GET/POST/PATCH/DELETE `/persons`, pagination, recherche par email, 404 |
+| `OrganizationRestIntegrationTest` | `@SpringBootTest + @AutoConfigureMockMvc` | GET/POST/PATCH/DELETE `/organizations`, pagination, 404 |
 
-**Frontend :**
+**Frontend (34 tests — mis à jour le 09 juin 2026) :**
 
-| Fichier spec                             | Ce qui est testé          |
-| ---------------------------------------- | ------------------------- |
-| `app.component.spec.ts`                  | Création, titre, rendu H1 |
-| `main-dashboard.component.spec.ts`       | Création du composant     |
-| `person-details.component.spec.ts`       | Création du composant     |
-| `organization-details.component.spec.ts` | Création du composant     |
-| `person.service.spec.ts`                 | Instanciation du service  |
-| `organization.service.spec.ts`           | Instanciation du service  |
+| Fichier spec | Ce qui est testé |
+|---|---|
+| `app.component.spec.ts` | Création, titre, rendu H1 |
+| `person.service.spec.ts` | `fetchAll`, `fetchById`, `fetchPersonOrganizations`, `save` (POST/PUT), `deleteById` |
+| `organization.service.spec.ts` | `fetchAll`, `fetchById`, `fetchOrganizationPersons`, `save` (POST/PUT), `deleteById`, `addPerson`, `removePerson` |
+| `main-dashboard.component.spec.ts` | Init charge persons + organizations, appel des services |
+| `person-details.component.spec.ts` | Mode new (isNew=true, navigation post-save), mode edit (fetchById, delete, save sans navigation) |
+| `organization-details.component.spec.ts` | Mode new (isNew=true, navigation post-save), mode edit (fetchById, delete, save sans navigation) |
 
-Tous les tests front utilisent `HttpClientTestingModule` (mock HTTP) et `RouterTestingModule`.
+Les services Angular sont testés avec `HttpClient` spy + `of()` RxJS (isolé, pas de serveur). Les composants utilisent `spyOn` sur les services + `RouterTestingModule`.
 
-### 5.2 Fréquence et objectifs
+### 5.2 Couverture mesurée
 
-| Événement                | Tests exécutés            | Objectif                     |
-| ------------------------ | ------------------------- | ---------------------------- |
-| Push vers `main`         | Back + front + Sonar + CD | Validation avant déploiement |
-| Pull request vers `main` | Back + front + Sonar      | Non-régression avant merge   |
+| Couche | Couverture lignes | Couverture branches | Méthodes | Résultat |
+|---|---|---|---|---|
+| Back-end (JaCoCo) | **91.5 %** (65/71) | 60 % (6/10) | 97 % (33/34) | ✅ Dépasse la cible (60 %) |
+| Front-end (Karma) | **91.5 %** (107/117) | 57 % (12/21) | 89 % (34/38) | ✅ Dépasse la cible (40 %) |
 
-**Limite :** les tests actuels sont des smoke tests (instanciation et démarrage de contexte). Des tests REST via `MockMvc` et des tests de comportement Angular sont à ajouter pour atteindre une couverture métier significative.
+**Bug corrigé lors des tests :** `Person.@PreRemove` levait une `NullPointerException` si `organizations` n'était pas initialisé (cas d'une personne créée puis immédiatement supprimée). Correction : guard null ajouté (`if (organizations == null) return`).
+
+### 5.3 Fréquence et déclencheurs
+
+| Événement | Tests exécutés | Objectif |
+|---|---|---|
+| Push vers `main` | Back + front + Sonar + CD | Validation avant déploiement |
+| Pull request vers `main` | Back + front + Sonar | Non-régression avant merge |
 
 ---
 
@@ -512,17 +523,14 @@ SonarCloud signale une duplication structurelle significative entre `person.serv
 
 ### 6.5 Couverture de tests
 
-| Couche | Tests existants | Ce qui est couvert | Ce qui manque |
-|---|---|---|---|
-| Back — Unitaire | `MicroCRMApplicationTests` (`@SpringBootTest`) | Démarrage du contexte Spring | Logique métier, validation, endpoints |
-| Back — Intégration | `PersonRepositoryIntegrationTest` (`@DataJpaTest`) | `findByEmail` sur HSQLDB | Tous les autres endpoints REST, codes HTTP, pagination |
-| Front — Unitaire | 6 fichiers `.spec.ts` | Instanciation des composants/services | Comportement UI, appels HTTP, gestion d'erreur |
+| Couche | Avant | Après ajout des tests | Cible | Statut |
+|---|---|---|---|---|
+| Back — lignes (JaCoCo) | ~16 % | **91.5 %** | 60 % | ✅ Atteint |
+| Front — lignes (Karma) | ~5 % | **91.5 %** | 40 % | ✅ Atteint |
 
-**Couverture estimée :**
-- Back : ~16 % (47 lignes de tests / 299 lignes de production)
-- Front : ~5 % (instanciation uniquement, aucun test de comportement)
+**Tests ajoutés :** `PersonTest`, `OrganizationTest`, `PersonRestIntegrationTest` (7 cas), `OrganizationRestIntegrationTest` (6 cas) côté back. Services et composants comportementaux côté front (27 nouveaux cas).
 
-**Cible recommandée :** 60 % back, 40 % front (tests comportementaux avec `MockMvc` et `ComponentFixture`).
+**Bug découvert et corrigé :** `Person.@PreRemove` → `NullPointerException` sur `organizations` null. Correction ajoutée : `if (organizations == null) return;`
 
 ---
 
@@ -560,7 +568,7 @@ Aucune credential dans les images Docker, les fichiers committés, ou `applicati
 | Aucune validation des champs API (injection, longueur) | 3 | 3 | **9** | 🟠 Élevé | En cours |
 | `API_BASE_URL` hardcodée | 3 | 2 | **6** | 🟡 Modéré | En cours |
 | Vulnérabilités Angular XSS (HIGH, npm audit) | 2 | 3 | **6** | 🟡 Modéré | Tracé — Angular 21 |
-| Couverture de tests insuffisante | 2 | 3 | **6** | 🟡 Modéré | En cours |
+| Couverture de tests insuffisante | 2 | 3 | **6** | 🟡 Modéré | ✅ Corrigé — 91.5 % ligne back+front |
 | `@CrossOrigin` redondant sur les repositories | 2 | 2 | **4** | 🟢 Faible | En cours |
 | Quality Gate SonarCloud non bloquant (`continue-on-error: true`) | 2 | 2 | **4** | 🟢 Faible | En cours |
 | `java.util.Date` déprécié | 1 | 1 | **1** | 🟢 Faible | À planifier |
@@ -583,7 +591,7 @@ Aucune credential dans les images Docker, les fichiers committés, ou `applicati
 | **P1 — Court terme** | Externaliser `API_BASE_URL` via Angular `environment.ts` | Faible | 🟡 Modéré |
 | **P2 — Moyen terme** | Ajouter gestion d'erreur dans les services Angular (`catch`) | Modéré | 🟡 Modéré |
 | **P2 — Moyen terme** | Supprimer `@CrossOrigin` redondant sur les repositories | Faible | 🟢 Faible |
-| **P2 — Moyen terme** | Écrire tests `MockMvc` pour les endpoints REST back | Modéré | Qualité |
+| ✅ **P2 — Fait** | Tests `MockMvc` + unitaires back + comportementaux front — couverture 91.5 % | Modéré | Qualité |
 | **P2 — Moyen terme** | Activer Quality Gate SonarCloud bloquant | Faible | Qualité |
 | **P3 — Long terme** | Migrer Angular 17 → 18+ (corrige 29 vulnérabilités HIGH npm) | Élevé | 🟡 Modéré |
 | **P3 — Long terme** | Remplacer `java.util.Date` par `LocalDateTime` | Modéré | Maintenabilité |
@@ -674,22 +682,162 @@ Les métriques DORA mesurent le pipeline. ELK mesure ce qui se passe dans l'appl
 
 ---
 
-## 9. Sauvegarde et mises à jour
+## 9. Plans d'exploitation
 
-**Sauvegarde :**
+---
 
-- Code → Git (GitHub)
-- Artefacts → GitHub Releases (JAR + archive front) à chaque tag `v*`
-- Images → GHCR (`latest` + SHA + `vX.Y.Z`)
-- HSQLDB in-memory — pas de données persistantes à sauvegarder
+### 9.1 Plan de déploiement
 
-**Mises à jour à planifier :**
+**Contexte :** l'application ne dispose pas d'un environnement de production dédié. Le "déploiement" est la publication des images Docker sur GHCR déclenchée automatiquement par le pipeline CI/CD.
 
-- Spring Boot 3.2.x → 3.4.x (fin de support)
-- Angular 17 → 18+ (version en maintenance)
-- Gradle 8.7 → 8.10+
-- Tags des images de base Docker après chaque patch de sécurité
-- Actions GitHub (`@v4`, `@v6`) — suivre les release notes
+#### Prérequis techniques
+
+| Élément | Valeur |
+|---|---|
+| Runtime | Docker 24+ et Docker Compose |
+| Registry | GHCR (`ghcr.io`) — authentification avec `GITHUB_TOKEN` |
+| Ports | `8080` (back-end API), `80` (front-end Caddy) |
+| Ressources minimales | 512 Mo RAM pour le back, 64 Mo pour Caddy |
+
+#### Ordre de déploiement
+
+```
+1. Pull des images depuis GHCR
+   docker pull ghcr.io/<owner>/orion-microcrm-back:latest
+   docker pull ghcr.io/<owner>/orion-microcrm-front:latest
+
+2. Démarrage du back-end en premier (base de données in-memory)
+   Le healthcheck HTTP confirme que /persons répond avant de continuer
+
+3. Démarrage du front-end
+   depends_on: back (condition: service_healthy)
+
+4. Vérification
+   curl http://localhost:8080/persons   → 200 OK
+   curl http://localhost/               → 200 OK (SPA Angular)
+```
+
+#### Commandes opérationnelles
+
+```bash
+# Déploiement complet depuis les images GHCR
+docker compose pull && docker compose up -d
+
+# Déploiement depuis les sources (rebuild complet)
+docker compose up --build -d
+
+# Stack avec monitoring ELK
+docker compose -f docker-compose.yml -f docker-compose.elk.yml up -d
+
+# Arrêt
+docker compose down
+```
+
+#### Déclenchement automatique (CI/CD)
+
+Le pipeline déploie automatiquement sur `push` vers `main` après validation des tests et de SonarCloud. Les images sont taguées `latest` + SHA du commit. La création d'un tag `v*` publie une GitHub Release avec le JAR et l'archive Angular.
+
+---
+
+### 9.2 Plan de sauvegarde
+
+#### Ce qui est sauvegardé
+
+| Donnée | Mécanisme | Fréquence | Rétention |
+|---|---|---|---|
+| Code source | Git — GitHub (dépôt distant) | À chaque commit (push) | Indéfinie |
+| JAR back-end | GitHub Releases (artefact de release) | À chaque tag `v*` | Indéfinie |
+| Archive front-end | GitHub Releases (zip `dist/`) | À chaque tag `v*` | Indéfinie |
+| Images Docker | GHCR — tags `latest`, SHA, `vX.Y.Z` | À chaque push `main` | Jusqu'à suppression manuelle |
+| Configuration Logback | Versionnée dans Git | À chaque commit | Indéfinie |
+| Pipeline CI/CD | `.github/workflows/ci-cd.yml` versionné | À chaque commit | Indéfinie |
+
+#### Ce qui n'est pas sauvegardé (et pourquoi)
+
+| Élément | Raison |
+|---|---|
+| Données HSQLDB | Base in-memory — aucune persistance entre redémarrages. Les données sont recréées par `InitialDataFixture` à chaque démarrage. Conception délibérée pour une application de démonstration. |
+| Logs ELK | Volume `elasticsearch-data` nommé, conservé entre `down`/`up`. Supprimé par `down -v`. Logs de démo — pas de SLA de rétention. |
+| Secrets (`SONAR_TOKEN`) | Gérés dans GitHub Settings → Secrets. Non versionnés. Documentés dans `rapport.md`. |
+
+#### Justification KPI
+
+Les métriques DORA montrent un **Lead Time ~7 min** et un **MTTR ~10-15 min**. En cas d'incident, la restauration d'une version précédente se fait via :
+
+```bash
+# Rollback vers une image précédente (tag SHA disponible sur GHCR)
+docker compose down
+docker pull ghcr.io/<owner>/orion-microcrm-back:<sha>
+# Modifier docker-compose.yml pour pointer sur le SHA
+docker compose up -d
+```
+
+---
+
+### 9.3 Plan de mise à jour
+
+#### Stratégie générale
+
+Les mises à jour suivent la politique SemVer : `PATCH` pour les corrections de sécurité (priorité immédiate), `MINOR` pour les évolutions, `MAJOR` pour les ruptures d'API.
+
+#### Dépendances back-end (Gradle)
+
+```bash
+# Vérifier les dépendances obsolètes
+cd back && ./gradlew dependencyUpdates
+
+# Mettre à jour une dépendance (exemple Spring Boot)
+# Modifier back/build.gradle : id 'org.springframework.boot' version '3.4.x'
+./gradlew build    # valider la compilation
+./gradlew test     # valider les tests (couverture 91.5 %)
+
+# Régénérer le lockfile après chaque ajout/modification
+./gradlew dependencies --write-locks
+```
+
+| Dépendance | Version actuelle | Action recommandée | Priorité |
+|---|---|---|---|
+| Spring Boot | 3.2.5 | → 3.4.x (fin de support 3.2) | 🟠 Élevé |
+| Java | 17 LTS | → 21 LTS (performances G1/ZGC) | 🟡 Modéré |
+| Gradle | 8.7 | → 8.10+ | 🟢 Faible |
+
+#### Dépendances front-end (npm)
+
+```bash
+# Vérifier les packages obsolètes et les vulnérabilités
+cd front && npm outdated
+npm audit
+
+# Mise à jour des patches de sécurité (non-breaking)
+npm audit fix
+
+# Mise à jour majeure Angular (ex. 17 → 18)
+npx @angular/cli update @angular/core @angular/cli --next
+npm test -- --no-watch    # valider la couverture (91.5 %)
+npm run build             # valider le build prod
+```
+
+| Dépendance | Version actuelle | Action recommandée | Priorité |
+|---|---|---|---|
+| Angular | 17.3 | → 18+ (résout 29 vulnérabilités HIGH npm) | 🟠 Élevé |
+| Node.js | 20 LTS | 20 LTS → maintenir épinglé | 🟢 Stable |
+
+#### Images Docker
+
+```dockerfile
+# Après chaque patch de sécurité Alpine/OpenJDK/Caddy :
+# Vérifier les nouvelles versions sur hub.docker.com
+# Mettre à jour les tags dans Dockerfile :
+FROM node:20-alpine          # → node:20.x.y-alpine (patch précis)
+FROM gradle:8.7-jdk17        # → gradle:8.10-jdk17 si disponible
+FROM eclipse-temurin:17-jre-alpine  # → 17.x.y-jre-alpine
+```
+
+La CI construit et teste les images à chaque push — une mise à jour de tag sera validée automatiquement.
+
+#### Actions GitHub
+
+Les actions utilisent des tags versionnés (`@v4`, `@v6`). Suivre les changelogs sur GitHub et mettre à jour dans `.github/workflows/ci-cd.yml` après chaque release de sécurité.
 
 ---
 
@@ -824,6 +972,79 @@ Ressources requises : environ 2 Go de RAM supplémentaires pour Elasticsearch (5
 
 ---
 
+## 11. Synthèse et amélioration continue
+
+**Date :** 09 juin 2026 | **Période couverte :** 07–09 juin 2026
+
+### 11.1 Compilation des métriques
+
+#### Métriques DORA (résumé)
+
+| Métrique | Valeur | Classe |
+|---|---|---|
+| Lead Time for Changes | ~7 min | Elite |
+| Deployment Frequency | 3 releases / 3 jours | Elite |
+| MTTR | ~10–15 min | Elite |
+| Change Failure Rate | ~27 % (période init) | Low → en amélioration |
+
+Le CFR élevé (27 %) est exclusivement dû à la phase d'initialisation du pipeline (configuration de zéro). Le code applicatif n'a jamais causé un échec de pipeline. Une fois le pipeline stabilisé, le CFR cible est < 15 %.
+
+#### KPI opérationnels du pipeline
+
+| KPI | Valeur |
+|---|---|
+| Build backend | ~55 s |
+| Build frontend | ~52 s |
+| Analyse SonarCloud | ~52 s |
+| Build + push Docker | ~3 min |
+| Lead Time total CI/CD | ~6–8 min |
+| Couverture back-end (JaCoCo) | **91.5 %** lignes |
+| Couverture front-end (Karma) | **91.5 %** lignes |
+| Issues Reliability résolues (SonarCloud) | 4 |
+| Vulnérabilités npm HIGH restantes | 29 (Angular ≤18) |
+
+#### Résultats SonarCloud
+
+| Catégorie | Avant | Après | Delta |
+|---|---|---|---|
+| Reliability issues | 4 | 0 | −4 ✅ |
+| Couverture back | ~16 % | 91.5 % | +75 pts ✅ |
+| Couverture front | ~5 % | 91.5 % | +86 pts ✅ |
+| CORS `allowedOrigins("*")` | En cours | En cours | À adresser avant prod |
+| API sans auth | Hors scope | Hors scope | P0 avant mise en prod |
+
+#### Indicateurs ELK (référence)
+
+| Indicateur | Baseline | Seuil d'alerte |
+|---|---|---|
+| Volume logs / min | À établir (48h) | > 2× la baseline |
+| Taux erreurs (`log_level:ERROR`) | < 1 % | > 5 % |
+| Status HTTP 5xx Caddy | 0 | > 0 sur 10 min |
+| Temps de réponse moyen | À établir | > 2 s |
+
+> Les valeurs de baseline seront fixées après 48 h d'utilisation en conditions normales.
+
+---
+
+### 11.2 Recommandations d'amélioration continue
+
+Classées par priorité et justifiées par les données collectées :
+
+| # | Recommandation | Justification | Effort | Priorité |
+|---|---|---|---|---|
+| 1 | Ajouter Spring Security (auth + authz) | API totalement ouverte — risque OWASP A01 Critique. Bloquant avant toute mise en production. | Élevé | 🔴 P0 |
+| 2 | Restreindre CORS (`allowedOrigins("*")`) | OWASP A05 — exploitable si mise en prod. Correction en une ligne. | Faible | 🟠 P1 |
+| 3 | Ajouter validation Bean Validation (`@NotNull`, `@Email`) | OWASP A03 — sans validation, une requête malformée passe sans erreur. Faible effort, impact élevé. | Faible | 🟠 P1 |
+| 4 | Externaliser `API_BASE_URL` (Angular `environment.ts`) | `http://localhost:8080` hardcodé empêche tout déploiement réel. Correction triviale. | Faible | 🟠 P1 |
+| 5 | Activer Quality Gate SonarCloud bloquant | `continue-on-error: true` sur le job sonar neutralise la gate. Qualité non enforce. | Faible | 🟡 P2 |
+| 6 | Ajouter gestion d'erreur HTTP dans les services Angular | Toutes les Promises rejettent silencieusement (OWASP A09). Impact UX et observabilité. | Modéré | 🟡 P2 |
+| 7 | Supprimer `@CrossOrigin` redondant sur les repositories | Doublon avec la config globale — source de confusion et de surface CORS inutile. | Faible | 🟢 P3 |
+| 8 | Migrer Angular 17 → 18+ | 29 vulnérabilités HIGH npm sur Angular ≤18. Effort élevé mais seul correctif disponible. | Élevé | 🟢 P3 |
+| 9 | Migrer Spring Boot 3.2.x → 3.4.x | 3.2.x en fin de support (novembre 2025). Rester sur une version maintenue. | Modéré | 🟢 P3 |
+| 10 | Factoriser services Angular (AbstractRestService) | Duplication ~40 % entre `PersonService` et `OrganizationService`. Impact maintenabilité. | Modéré | 🟢 P3 |
+
+---
+
 ## Livrables
 
 | Livrable               | Emplacement                                  |
@@ -836,4 +1057,6 @@ Ressources requises : environ 2 Go de RAM supplémentaires pour Elasticsearch (5
 | Configuration Filebeat | `misc/elk/filebeat/filebeat.yml`             |
 | Configuration Logback  | `back/src/main/resources/logback-spring.xml` |
 | Configuration Sonar    | `sonar-project.properties`                   |
+| Tests back-end         | `back/src/test/java/…/` (6 classes, 26 tests) |
+| Tests front-end        | `front/src/app/**/*.spec.ts` (34 tests)      |
 | Documentation          | `rapport.md`                                 |
