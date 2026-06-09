@@ -35,7 +35,7 @@ WORKDIR /app
 COPY --from=back-build /src/build/libs/microcrm-0.0.1-SNAPSHOT.jar app.jar
 
 # Créer un user non-root et lui donner la propriété du dossier de travail
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup \
+RUN groupadd -r appgroup && useradd -r -g appgroup appuser \
     && chown -R appuser:appgroup /app
 
 USER appuser
