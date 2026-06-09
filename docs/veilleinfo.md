@@ -17,10 +17,10 @@ Ce document recense les versions utilisées dans le projet, les mises à jour id
 | `actions/upload-artifact` | `@v7` | 2026-06-09 | [github.com/actions/upload-artifact](https://github.com/actions/upload-artifact) |
 | `actions/download-artifact` | `@v8` | 2026-06-09 | [github.com/actions/download-artifact](https://github.com/actions/download-artifact) |
 | `SonarSource/sonarqube-scan-action` | `@v6` | — | [github.com/SonarSource/sonarqube-scan-action](https://github.com/SonarSource/sonarqube-scan-action) |
-| `docker/setup-buildx-action` | `@v3` | — | [github.com/docker/setup-buildx-action](https://github.com/docker/setup-buildx-action) |
-| `docker/login-action` | `@v3` | — | [github.com/docker/login-action](https://github.com/docker/login-action) |
-| `docker/metadata-action` | `@v5` | — | [github.com/docker/metadata-action](https://github.com/docker/metadata-action) |
-| `docker/build-push-action` | `@v6` | — | [github.com/docker/build-push-action](https://github.com/docker/build-push-action) |
+| `docker/setup-buildx-action` | `@v4` | 2026-06-09 | [github.com/docker/setup-buildx-action](https://github.com/docker/setup-buildx-action) |
+| `docker/login-action` | `@v4` | 2026-06-09 | [github.com/docker/login-action](https://github.com/docker/login-action) |
+| `docker/metadata-action` | `@v6` | 2026-06-09 | [github.com/docker/metadata-action](https://github.com/docker/metadata-action) |
+| `docker/build-push-action` | `@v7` | 2026-06-09 | [github.com/docker/build-push-action](https://github.com/docker/build-push-action) |
 | `softprops/action-gh-release` | `@v2` | — | [github.com/softprops/action-gh-release](https://github.com/softprops/action-gh-release) |
 
 ### Mise à jour identifiée
@@ -33,6 +33,10 @@ Ce document recense les versions utilisées dans le projet, les mises à jour id
 | `actions/setup-node` | `@v4` | `@v6` | 2026-06-09 | ✅ |
 | `actions/upload-artifact` | `@v4` | `@v7` | 2026-06-09 | ✅ |
 | `actions/download-artifact` | `@v4` | `@v8` | 2026-06-09 | ✅ |
+| `docker/setup-buildx-action` | `@v3` | `@v4` | 2026-06-09 | ✅ |
+| `docker/login-action` | `@v3` | `@v4` | 2026-06-09 | ✅ |
+| `docker/metadata-action` | `@v5` | `@v6` | 2026-06-09 | ✅ |
+| `docker/build-push-action` | `@v6` | `@v7` | 2026-06-09 | ✅ |
 
 ### Comment vérifier les nouvelles versions
 
