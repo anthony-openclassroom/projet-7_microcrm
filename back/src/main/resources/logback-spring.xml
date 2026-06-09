@@ -1,0 +1,36 @@
+<configuration>
+
+  <!-- Profil local : logs texte lisibles dans la console -->
+  <springProfile name="default">
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+    <root level="INFO">
+      <appender-ref ref="CONSOLE"/>
+    </root>
+  </springProfile>
+
+  <!-- Profil docker : logs JSON vers Logstash via TCP -->
+  <springProfile name="docker">
+    <appender name="LOGSTASH" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
+      <destination>${LOGSTASH_HOST:-logstash}:${LOGSTASH_PORT:-5000}</destination>
+      <keepAliveDuration>5 minutes</keepAliveDuration>
+      <reconnectionDelay>10 seconds</reconnectionDelay>
+      <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+        <customFields>{"app":"microcrm-back","env":"docker"}</customFields>
+      </encoder>
+    </appender>
+
+    <!-- Garde aussi un appender console pour docker logs -->
+    <appender name="CONSOLE_JSON" class="ch.qos.logback.core.ConsoleAppender">
+      <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+        <customFields>{"app":"microcrm-back","env":"docker"}</customFields>
+      </encoder>
+    </appender>
+
+    <root level="INFO">
+      <appender-ref ref="LOGSTASH"/>
+      <appender-ref ref="CONSOLE_JSON"/>
+    </root>
+  </springProfile>
+
+</configuration>
