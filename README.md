@@ -6,7 +6,7 @@
 
 MicroCRM est une implémentation simplifiée d'un [CRM (Customer Relationship Management)](https://fr.wikipedia.org/wiki/Gestion_de_la_relation_client). Les fonctionnalités couvrent la création, l'édition et la visualisation des individus liés à des organisations.
 
-Projet P7 — Développeur Full-Stack Java et Angular — *Mettre en œuvre l'intégration et le déploiement continu d'une application Full-Stack*.
+Projet 6 — Développeur Full-Stack Java et Angular — _Mettre en œuvre l'intégration et le déploiement continu d'une application Full-Stack_.
 
 ![Page d'accueil](./misc/screenshots/screenshot_1.png)
 ![Édition de la fiche d'un individu](./misc/screenshots/screenshot_2.png)
@@ -73,7 +73,7 @@ npm test -- --no-watch --browsers=ChromeHeadlessNoSandbox
 ### Avec Docker Compose (recommandé)
 
 ```shell
-docker-compose up --build
+docker compose up --build
 ```
 
 Frontend sur http://localhost, API sur http://localhost:8080.
@@ -121,7 +121,7 @@ Le pipeline est configuré dans [`.github/workflows/ci-cd.yml`](.github/workflow
 
 Sur push vers `main` uniquement :
 
-4. Build et publication des images Docker (Docker Hub)
+4. Build et publication des images Docker (GHCR — GitHub Container Registry)
 5. Création d'une release GitHub sur tag `v*`
 
 Pour créer une release :
@@ -131,3 +131,5 @@ git tag v1.0.0 && git push origin v1.0.0
 ```
 
 La documentation technique complète (plans de testing, sécurité, conteneurisation, versioning) est dans [`rapport.md`](rapport.md).
+La documentation de déploiement (fonctionnement du CD, commandes, secrets) est dans [`docs/deploy.md`](docs/deploy.md).
+La veille technologique (versions des actions GitHub, images Docker, stack) est dans [`docs/veilleinfo.md`](docs/veilleinfo.md).
