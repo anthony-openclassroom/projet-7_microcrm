@@ -5,6 +5,8 @@ services:
       target: back
     ports:
       - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8080/persons"]
       interval: 10s
@@ -19,6 +21,11 @@ services:
     ports:
       - "80:80"
       - "443:443"
+    volumes:
+      - caddy-logs:/var/log/caddy
     depends_on:
       back:
         condition: service_healthy
+
+volumes:
+  caddy-logs:
