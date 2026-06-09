@@ -47,7 +47,7 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 # ────────────────────────────────────────────
 # Stage standalone : front + back dans un seul conteneur via Supervisor
 # ────────────────────────────────────────────
-FROM alpine:3.19 AS standalone
+FROM alpine:3.21 AS standalone
 
 WORKDIR /app
 
