@@ -562,6 +562,7 @@ Aucune credential dans les images Docker, les fichiers committés, ou `applicati
 | Vulnérabilités Angular XSS (HIGH, npm audit) | 2 | 3 | **6** | 🟡 Modéré | Tracé — Angular 21 |
 | Couverture de tests insuffisante | 2 | 3 | **6** | 🟡 Modéré | En cours |
 | `@CrossOrigin` redondant sur les repositories | 2 | 2 | **4** | 🟢 Faible | En cours |
+| Quality Gate SonarCloud non bloquant (`continue-on-error: true`) | 2 | 2 | **4** | 🟢 Faible | En cours |
 | `java.util.Date` déprécié | 1 | 1 | **1** | 🟢 Faible | À planifier |
 | Conteneurs en `root` | 3 | 3 | **9** | 🟠 Élevé | ✅ Corrigé |
 | Images Docker non épinglées | 4 | 2 | **8** | 🟡 Modéré | ✅ Corrigé |
