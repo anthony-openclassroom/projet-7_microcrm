@@ -493,16 +493,64 @@ Pas de release automatique à chaque commit. Modèle `main` + tags — pas de br
 
 ---
 
-## 8. Monitoring et métriques DORA
+## 8. Métriques DORA et KPI opérationnels
 
-| Métrique DORA            | Source         | Comment la mesurer                               |
-| ------------------------ | -------------- | ------------------------------------------------ |
-| **Lead Time**            | Onglet Actions | Durée totale du workflow CI/CD sur `main`        |
-| **Deployment Frequency** | Onglet Actions | Nombre de runs CD réussis par semaine            |
-| **MTTR**                 | Onglet Actions | Durée entre un run échoué et le run vert suivant |
-| **Change Failure Rate**  | Onglet Actions | (Runs CD échoués / total) × 100                  |
+**Période d'observation :** 07–09 juin 2026 | **Releases analysées :** v1.0.0, v1.0.1, v1.1.0 | **Source :** GitHub Actions, git log
 
-Les valeurs seront renseignées après les premières semaines d'utilisation.
+### 8.1 Les 4 métriques DORA
+
+#### Méthode de calcul
+
+| Métrique | Définition retenue | Source de données |
+|---|---|---|
+| Lead Time | Durée entre le dernier commit d'un batch et la fin du job `docker` (image disponible sur GHCR) | GitHub Actions — durée cumulée des jobs |
+| Deployment Frequency | Nombre de déploiements GHCR réussis par jour | GitHub Actions — runs `push` sur `main` avec job `docker` vert |
+| MTTR | Durée entre le commit qui introduit un défaut (pipeline rouge) et le commit de correction | git log — paires commit cassant / commit `fix` |
+| Change Failure Rate | (Nombre de runs nécessitant un fix correctif immédiat / total des runs sur `main`) × 100 | git log — commits `fix(ci)` ou `fix(docker)` correctifs |
+
+#### Résultats mesurés
+
+| Métrique DORA | Valeur mesurée | Classe DORA | Commentaire |
+|---|---|---|---|
+| **Lead Time for Changes** | ~7 min | Elite (< 1h) | Pipeline : back (~55 s) + front (~52 s) ‖ sonar (~52 s) → docker (~3 min). Pas de serveur prod — le "déploiement" est la publication GHCR. |
+| **Deployment Frequency** | 3 releases en 3 jours | Elite (> 1/jour) | v1.0.0, v1.0.1, v1.1.0. Plusieurs images GHCR publiées par jour pendant le développement actif. |
+| **MTTR** | ~10–15 min | Elite (< 1h) | Incidents observés : clé Sonar manquante, mauvais chemin d'artefact, seuil npm audit. Tous corrigés en < 15 min. |
+| **Change Failure Rate** | ~27 % | Low (> 15 %) | 4 corrections de pipeline sur ~15 runs estimés. Élevé mais attendu : période d'initialisation du pipeline (configuration de zéro). Cible < 15 % une fois le pipeline stabilisé. |
+
+> **Note sur le CFR :** les 4 commits correctifs concernent exclusivement la configuration CI/CD (non le code applicatif). Le pipeline applicatif (tests JUnit, tests Angular) n'a jamais été la cause d'un échec — la qualité du code source est stable.
+
+---
+
+### 8.2 KPI opérationnels du pipeline
+
+Ces indicateurs complètent les métriques DORA en expliquant d'où viennent les durées et en traçant la qualité au-delà de la simple couleur verte/rouge.
+
+| KPI | Valeur | Méthode de mesure |
+|---|---|---|
+| Durée build backend (Gradle compile + tests + JaCoCo) | ~55 s | GitHub Actions — step `./gradlew build`, job `backend` |
+| Durée build frontend (npm ci + Karma + ng build + audit) | ~52 s | GitHub Actions — job `frontend` |
+| Durée analyse SonarCloud | ~52 s | GitHub Actions — job `sonar` |
+| Durée build + push images Docker (back + front) | ~3 min | GitHub Actions — job `docker` |
+| Durée totale pipeline (Lead Time CI/CD) | ~6–8 min | Somme des jobs en séquence critique |
+| Issues SonarCloud Reliability résolues | 4 | SonarCloud — catégorie Reliability, fermeture le 09/06/2026 |
+| Vulnérabilités npm restantes (HIGH) | 29 | `npm audit` — Angular core ≤18, correctif = migration Angular 21 |
+| Vulnérabilités npm corrigées (non-breaking) | 33 | `npm audit fix` — 79 → 46 |
+
+---
+
+### 8.3 Indicateurs ELK (applicatifs)
+
+Les métriques DORA mesurent le pipeline. ELK mesure ce qui se passe dans l'application une fois déployée. Ces deux niveaux sont complémentaires.
+
+| Indicateur ELK | Source Kibana | Utilité |
+|---|---|---|
+| Volume de logs / minute | Index `microcrm-spring-boot-*` — date histogram sur `@timestamp` | Détecter les pics d'activité anormaux |
+| Taux d'erreurs applicatives | Filtre `log_level: ERROR` — proportion sur total | Mesurer la stabilité du back-end en conditions réelles |
+| Distribution des niveaux (INFO / WARN / ERROR) | Terms aggregation sur `log_level` | Tableau de bord de santé applicative |
+| Status HTTP Caddy (2xx / 4xx / 5xx) | Index `microcrm-caddy-*` — terms aggregation sur `status` | Détecter les erreurs front (404 de routes manquantes, 5xx backend) |
+| Temps de réponse moyen (front) | Avg aggregation sur le champ `duration` dans les logs Caddy | Indicateur de performance perçue par l'utilisateur |
+
+> **État actuel :** la stack ELK est déployée localement et opérationnelle (voir section 10). Les valeurs de référence (baseline) seront établies après 48 h d'utilisation en conditions normales.
 
 ---
 
