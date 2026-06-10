@@ -39,6 +39,26 @@ Le déploiement est entièrement automatisé via GitHub Actions. Il se décompos
 
 Le CD ne s'exécute **jamais** sur une pull request — uniquement sur des commits atteignant `main` ou sur un tag.
 
+```mermaid
+flowchart LR
+    trigger(["Push / PR\nvers main"])
+
+    subgraph parallel["En parallèle"]
+        B["Backend\nBuild + Tests\n./gradlew build"]
+        F["Frontend\nBuild + Tests\nnpm ci · npm test · npm run build"]
+    end
+
+    S["SonarCloud\nAnalyse qualité"]
+    D["Build & Push\nImages Docker → GHCR"]
+    R["GitHub Release\n(tags v* uniquement)"]
+
+    trigger --> parallel
+    B --> S
+    F --> S
+    S --> D
+    D --> R
+```
+
 ---
 
 ## Prérequis au déploiement
