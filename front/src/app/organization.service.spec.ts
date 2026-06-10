@@ -102,23 +102,23 @@ describe('OrganizationService', () => {
     );
   });
 
-  it('addPerson sends PUT to /organizations/:orgId/persons with text/uri-list header', async () => {
-    httpSpy.put.and.returnValue(of(null));
+  it('addPerson sends POST to /organizations/:orgId/persons with text/uri-list header', async () => {
+    httpSpy.post.and.returnValue(of(null));
 
     await service.addPerson(1, 2);
 
-    expect(httpSpy.put).toHaveBeenCalledWith(
+    expect(httpSpy.post).toHaveBeenCalledWith(
       `${API_BASE_URL}/organizations/1/persons`,
       `${API_BASE_URL}/persons/2`,
       jasmine.objectContaining({ headers: jasmine.objectContaining({ 'Content-Type': 'text/uri-list' }) })
     );
   });
 
-  it('removePerson sends DELETE to /persons/:personId/organizations/:orgId', async () => {
+  it('removePerson sends DELETE to /organizations/:orgId/persons/:personId', async () => {
     httpSpy.delete.and.returnValue(of(null));
 
     await service.removePerson(1, 2);
 
-    expect(httpSpy.delete).toHaveBeenCalledWith(`${API_BASE_URL}/persons/2/organizations/1`);
+    expect(httpSpy.delete).toHaveBeenCalledWith(`${API_BASE_URL}/organizations/1/persons/2`);
   });
 });
