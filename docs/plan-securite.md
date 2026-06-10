@@ -58,6 +58,17 @@
 
 ---
 
+## Zones à forte complexité
+
+| Fichier | Méthode | Complexité | Raison |
+|---|---|---|---|
+| `person-details.component.ts` | Composant global | Élevée | Gère la logique CRUD + organisations liées + refresh |
+| `person.service.ts` | `save()` | Modérée | Branchement POST/PUT + re-fetch des organisations |
+| `organization.service.ts` | `save()` | Modérée | Même pattern que `person.service.ts` |
+| `SpringDataRestCustomization.java` | `configureRepositoryRestConfiguration` | Faible | Simple mais concentre la config CORS critique |
+
+---
+
 ## Tableau des risques
 
 **C = Fréquence (F) × Gravité (G)** | 🟢 1–4 | 🟡 5–8 | 🟠 9–12 | 🔴 13–16
