@@ -98,15 +98,6 @@ docker run -it --rm -p 8080:8080 orion-microcrm-back:latest
 
 API disponible sur http://localhost:8080.
 
-#### Tout en un
-
-```shell
-docker build --target standalone -t orion-microcrm-standalone:latest .
-docker run -it --rm -p 8080:8080 -p 80:80 -p 443:443 orion-microcrm-standalone:latest
-```
-
-Application sur https://localhost, API sur http://localhost:8080.
-
 ---
 
 ## CI/CD
