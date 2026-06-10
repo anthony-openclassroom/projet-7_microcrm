@@ -14,7 +14,7 @@ export abstract class AbstractRestService<T extends { id?: number }> {
 
   protected async fetchEmbedded<X>(url: string, key: string): Promise<X[]> {
     const result = await this.get<any>(url);
-    return result['_embedded'][key] as X[];
+    return (result['_embedded']?.[key] ?? []) as X[];
   }
 
   async fetchAll(): Promise<T[]> {
