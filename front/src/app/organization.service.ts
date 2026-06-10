@@ -31,7 +31,7 @@ export class OrganizationService extends AbstractRestService<Organization> {
   }
 
   async addPerson(orgId: number, personId: number): Promise<void> {
-    await firstValueFrom(this.client.put(
+    await firstValueFrom(this.client.post(
       `${API_BASE_URL}/organizations/${orgId}/persons`,
       `${API_BASE_URL}/persons/${personId}`,
       { headers: { 'Content-Type': 'text/uri-list' } }
@@ -40,7 +40,7 @@ export class OrganizationService extends AbstractRestService<Organization> {
 
   async removePerson(orgId: number, personId: number): Promise<void> {
     await firstValueFrom(this.client.delete(
-      `${API_BASE_URL}/persons/${personId}/organizations/${orgId}`
+      `${API_BASE_URL}/organizations/${orgId}/persons/${personId}`
     ));
   }
 }
