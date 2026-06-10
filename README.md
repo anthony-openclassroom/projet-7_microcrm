@@ -130,8 +130,6 @@ Pour créer une release :
 git tag v1.0.0 && git push origin v1.0.0
 ```
 
-La documentation technique complète est dans [`rapport.md`](rapport.md).
-
 ### Documentation détaillée
 
 | Document | Contenu |
