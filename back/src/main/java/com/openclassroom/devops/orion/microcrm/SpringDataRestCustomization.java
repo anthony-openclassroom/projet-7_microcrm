@@ -12,7 +12,7 @@ public class SpringDataRestCustomization implements RepositoryRestConfigurer {
     public void configureRepositoryRestConfiguration(RepositoryRestConfiguration config, CorsRegistry cors) {
         config.exposeIdsFor(Person.class, Organization.class);
         cors.addMapping("/**")
-                .allowedOrigins("http://localhost", "https://microcrm.example.com")
+                .allowedOrigins("http://localhost", "https://localhost")
                 .allowedMethods("GET", "POST", "PATCH", "DELETE")
                 .exposedHeaders("Access-Control-Allow-Origin")
                 .allowCredentials(false).maxAge(3600);
