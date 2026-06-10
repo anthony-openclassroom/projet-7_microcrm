@@ -67,11 +67,6 @@ Dependabot ouvre automatiquement des pull requests quand une action a une nouvel
 | `caddy` | `2-alpine` | Runtime front | Tag flottant sur branche 2.x stable |
 | `eclipse-temurin` | `17-jre-jammy` | Runtime back | Java 17 LTS supporté jusqu'à sept. 2029. Variante Jammy (Ubuntu 22.04) — multi-plateforme amd64 + arm64. La variante `-alpine` n'a pas de manifest ARM64. |
 
-### Mise à jour identifiée
-
-| Image | Ancienne version | Nouvelle version | Raison | Appliquée |
-|---|---|---|---|---|
-| `alpine` | `3.19` | `3.21` | Alpine 3.19 EOL nov. 2025 | ✅ |
 
 ### Point de vigilance — Node 20
 
