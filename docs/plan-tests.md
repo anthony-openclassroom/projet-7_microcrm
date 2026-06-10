@@ -65,6 +65,35 @@ La couverture branches plus basse (57-60 %) correspond aux cas d'erreur HTTP et 
 
 ---
 
+## Configuration Sonar et JaCoCo
+
+`sonar-project.properties` à la racine du dépôt :
+
+```properties
+sonar.projectKey=microcrm
+sonar.organization=anthony-openclassroom
+sonar.sources=back/src/main,front/src
+sonar.tests=back/src/test
+sonar.java.binaries=back/build/classes
+sonar.exclusions=**/node_modules/**,**/dist/**,**/*.spec.ts
+```
+
+JaCoCo dans `back/build.gradle` :
+
+```groovy
+plugins {
+    id 'jacoco'
+}
+jacocoTestReport {
+    dependsOn test
+    reports { xml.required = true }
+}
+```
+
+Le rapport XML est requis pour que SonarCloud puisse importer les données de couverture. Le job `sonar` lance `./gradlew test jacocoTestReport` avant de déclencher l'analyse.
+
+---
+
 ## Choix techniques
 
 **Spring Data REST** ne génère pas de `@RestController` — les endpoints REST sont produits par le framework. La couverture de ces endpoints nécessite `@SpringBootTest + @AutoConfigureMockMvc` (test d'intégration complet) plutôt que des mocks de controller. `@Transactional` sur chaque test classe garantit le rollback des données après chaque test.
